@@ -13,7 +13,7 @@ namespace ExchangeRatesAPI.Services
             db = context;
         }
 
-        public async Task<bool> IsAuthorized(string apiKey)
+        public async Task<bool> IsAuthorizedAsync(string apiKey)
         {
             var dbLastApiKey = await db.Tokens.OrderBy(x => x.Created).LastAsync();
 

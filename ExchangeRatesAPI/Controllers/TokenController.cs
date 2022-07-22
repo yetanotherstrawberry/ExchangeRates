@@ -24,7 +24,7 @@ namespace ExchangeRatesAPI.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiKey))]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)] // Incorrect key
         [ProducesResponseType(StatusCodes.Status500InternalServerError)] // Any exception
         public async Task<IActionResult> Get(string apiKey)
@@ -33,17 +33,18 @@ namespace ExchangeRatesAPI.Controllers
 
             try
             {
-                if (!await auth.IsAuthorized(apiKey)) return Unauthorized();
+                if (!await auth.IsAuthorizedAsync(apiKey)) return Unauthorized();
 
                 ret = new ApiKey
                 {
                     Key = Guid.NewGuid().ToString(),
+                    Created = DateTime.Now,
                 };
 
                 await db.Tokens.AddAsync(ret);
                 await db.SaveChangesAsync();
 
-                return Ok(ret);
+                return Ok(ret.Key);
             }
             catch (Exception e)
             {
