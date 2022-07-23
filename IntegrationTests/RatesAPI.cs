@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -46,8 +47,12 @@ namespace Tests
             return ret;
         }
 
+        private JsonElement GetCurrencies(JsonElement element) => element.GetProperty("currencies")[0];
+        private JsonElement GetRates(JsonElement element) => element.GetProperty("rates");
+        private double GetRate(JsonElement element, int id) => element[id].GetProperty("rate").GetDouble();
+
         [TestMethod]
-        public async Task Test()
+        public async Task RatesTest()
         {
             var response = await client.SendAsync(NewRequestMessage(
                 new DateTime(2022, 2, 3),
@@ -60,14 +65,14 @@ namespace Tests
             string serverResponse = await response.Content.ReadAsStringAsync();
             var doc = JsonDocument.Parse(serverResponse).RootElement;
 
-            var rateThursday = doc[0].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
-            var rateFriday = doc[1].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
-            var rateSaturday = doc[2].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
-            var rateSunday = doc[3].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
-            var rateMonday = doc[4].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
-            var rateTuesday = doc[5].GetProperty("currencies")[0].GetProperty("rates")[0].GetProperty("rate").GetDouble();
+            var rateThursday = GetRate(GetRates(GetCurrencies(doc[0])), 0);
+            var rateFriday = GetRate(GetRates(GetCurrencies(doc[1])), 0);
+            var rateSaturday = GetRate(GetRates(GetCurrencies(doc[2])), 0);
+            var rateSunday = GetRate(GetRates(GetCurrencies(doc[3])), 0);
+            var rateMonday = GetRate(GetRates(GetCurrencies(doc[4])), 0);
+            var rateTuesday = GetRate(GetRates(GetCurrencies(doc[5])), 0);
 
-            var rateUsd = doc[5].GetProperty("currencies")[0].GetProperty("rates")[1].GetProperty("rate").GetDouble();
+            var rateUsd = GetRate(GetRates(GetCurrencies(doc[5])), 1);
 
             Assert.AreEqual(rateThursday, 4.5315);
             Assert.AreEqual(rateFriday, rateSaturday);
@@ -77,6 +82,43 @@ namespace Tests
             Assert.AreEqual(rateTuesday, 4.5312);
 
             Assert.AreEqual(rateUsd, 1.1408);
+        }
+
+        [TestMethod]
+        public async Task SpeedTest()
+        {
+            // Database should be flushed from time to time for this test to work properly.
+            // We try to fetch the same random rates twice.
+            var random = new Random();
+            int day = random.Next(0, 29), month = random.Next(1, 13), year = random.Next(2010, 2021);
+
+            Stopwatch sw = new Stopwatch();
+
+            sw.Start();
+            await client.SendAsync(NewRequestMessage(
+                new DateTime(year, month, day),
+                new DateTime(year, month, day),
+                new Dictionary<string, string>{
+                    { "PLN", "EUR" },
+                    { "USD", "EUR" },
+                }));
+            sw.Stop();
+
+            var firstMs = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            await client.SendAsync(NewRequestMessage(
+                new DateTime(year, month, day),
+                new DateTime(year, month, day),
+                new Dictionary<string, string>{
+                    { "PLN", "EUR" },
+                    { "USD", "EUR" },
+                }));
+            sw.Stop();
+
+            var secondMs = sw.ElapsedMilliseconds;
+
+            Assert.IsTrue(firstMs > secondMs * 2); // We assume that cached calles are at least twice faster than calles to the external API.
         }
     }
 }
