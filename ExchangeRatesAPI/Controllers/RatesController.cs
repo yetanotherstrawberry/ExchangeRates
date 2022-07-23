@@ -128,7 +128,7 @@ namespace ExchangeRatesAPI.Controllers
                                 if (rate == null)
                                 {
                                     double newRate = 0;
-                                    for (DateTime innerDate = day/*.Subtract(TimeSpan.FromDays(1))*/; innerDate >= minDate; innerDate = innerDate.Subtract(TimeSpan.FromDays(1)))
+                                    for (DateTime innerDate = day; innerDate >= minDate; innerDate = innerDate.Subtract(TimeSpan.FromDays(1)))
                                     {
                                         if (!discDays.Keys.Contains(innerDate)) continue; // Consecutive missing days.
 
