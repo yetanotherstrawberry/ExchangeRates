@@ -23,7 +23,7 @@ namespace ExchangeRatesAPI.Controllers
         private readonly Auth auth;
 
         // Just in case the startDate is a day without exchange rates, how many days in the past should we check for the last known rate? (will always use last)
-        private const int DaysFiller = 5;
+        private const int DaysFiller = 20;
 
         public RatesController(ILogger<RatesController> logger, ApplicationDbContext context, HttpClient http, Auth auth)
         {
@@ -79,7 +79,7 @@ namespace ExchangeRatesAPI.Controllers
                 var dbDay = await db.Exchanges
                     .Include(x => x.Currencies)
                     .ThenInclude(x => x.Rates)
-                    .OrderBy(x => x.Date) // Only to remove warning about using AsSplitQuery() without sorting. TODO?
+                    .OrderBy(x => x.Date) // Only to remove warning about using AsSplitQuery() is to sort the input.
                     .AsSplitQuery()
                     .SingleOrDefaultAsync(x => x.Date.Equals(day.Date));
 
@@ -133,13 +133,13 @@ namespace ExchangeRatesAPI.Controllers
                                 if (rate == null)
                                 {
                                     double newRate = 0;
-                                    for (DateTime innerDate = day.Subtract(TimeSpan.FromDays(1)); day >= minDate; day = day.Subtract(TimeSpan.FromDays(1)))
+                                    for (DateTime innerDate = day/*.Subtract(TimeSpan.FromDays(1))*/; innerDate >= minDate; innerDate = innerDate.Subtract(TimeSpan.FromDays(1)))
                                     {
                                         if (!discDays.Keys.Contains(innerDate)) continue; // Consecutive missing days.
 
                                         var innerRate = discDays[innerDate].Currencies
                                             .SingleOrDefault(x => x.Denominator.Equals(denominator))?
-                                            .Rates.SingleOrDefault(x => x.CurrencyName.Equals(nominator))?.Rate;
+                                            .Rates?.SingleOrDefault(x => x.CurrencyName.Equals(nominator))?.Rate;
 
                                         if (innerRate != null)
                                         {
@@ -317,7 +317,7 @@ namespace ExchangeRatesAPI.Controllers
                 var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
                 await AddMissingData(externalDb, startDate, endDate, currencyCodes);
                 await AddRecordsToDatabase(externalDb);
-                return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate));
+                return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate).OrderBy(x => x.Date));
             }
         }
     }
