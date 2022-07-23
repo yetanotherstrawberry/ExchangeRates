@@ -3,7 +3,6 @@ using ExchangeRatesAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,23 +16,19 @@ namespace ExchangeRatesAPI.Controllers
     [Route("[controller]")]
     public class RatesController : ControllerBase
     {
-        private readonly ILogger<RatesController> _logger;
         private readonly ApplicationDbContext db;
         private readonly HttpClient http;
         private readonly Auth auth;
 
         // Just in case the startDate is a day without exchange rates, how many days in the past should we check for the last known rate? (will always use last)
-        private const int DaysFiller = 20;
+        private const int DaysFiller = 5;
 
-        public RatesController(ILogger<RatesController> logger, ApplicationDbContext context, HttpClient http, Auth auth)
+        public RatesController(ApplicationDbContext context, HttpClient http, Auth auth)
         {
-            _logger = logger;
             db = context;
             this.http = http;
             this.auth = auth;
         }
-
-        private int GetDays(DateTime startDate, DateTime endDate) => (int)(endDate - startDate).TotalDays + 1;
 
         private string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
 
@@ -111,7 +106,7 @@ namespace ExchangeRatesAPI.Controllers
 
         private string AggregateStrings(IEnumerable<string> strings) => strings.Aggregate((x, y) => x + "+" + y);
 
-        private async Task AddMissingData(ICollection<Exchange> days, DateTime start, DateTime end, Dictionary<string, string> currencyCodes)
+        private void AddMissingData(ICollection<Exchange> days, DateTime start, DateTime end, Dictionary<string, string> currencyCodes)
         {
             var discDays = days.ToDictionary(x => x.Date);
             var minDate = days.Select(x => x.Date).Min();
@@ -186,8 +181,6 @@ namespace ExchangeRatesAPI.Controllers
                     continue;
                 }
             }
-
-            await Task.CompletedTask;
         }
 
         private async Task<ICollection<Exchange>> ExternalGetExchangeRates(DateTime startDate, DateTime endDate, Dictionary<string, string> currencyCodes)
@@ -301,11 +294,6 @@ namespace ExchangeRatesAPI.Controllers
             {
                 return Ok(dbResult.Items);
             }
-            else if (false && dbResult.Equals(Result.MissingDays))
-            {
-                throw new NotImplementedException();
-                // TODO: Missing days.
-            }
             else
             {
                 // If rates from startDate or endDate are unknown we will use values from previous/future days.
@@ -315,7 +303,7 @@ namespace ExchangeRatesAPI.Controllers
                 var pastDay = startDate.Subtract(TimeSpan.FromDays(DaysFiller));
 
                 var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
-                await AddMissingData(externalDb, startDate, endDate, currencyCodes);
+                AddMissingData(externalDb, startDate, endDate, currencyCodes);
                 await AddRecordsToDatabase(externalDb);
                 return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate).OrderBy(x => x.Date));
             }

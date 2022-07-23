@@ -5,7 +5,6 @@ namespace ExchangeRatesAPI.Models
     public enum Result
     {
         Complete,
-        MissingDays,
         Incomplete,
     }
 
