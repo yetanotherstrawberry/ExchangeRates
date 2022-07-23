@@ -33,27 +33,43 @@ namespace ExchangeRatesAPI.Controllers
             this.auth = auth;
         }
 
+        private int GetDays(DateTime startDate, DateTime endDate) => (int)(endDate - startDate).TotalDays + 1;
+
         private string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
 
-        private async Task<IEnumerable<Exchange>> GetRecordsFromDatabase(
+        private async Task<DatabaseResult> GetRecordsFromDatabase(
             Dictionary<string, string> currencyCodes,
             DateTime startDate,
             DateTime endDate)
         {
 
-            var items = await (db.Exchanges.AsNoTracking() // This is neccessary, because we've previously loaded collections in this context, so Where() clause wouldn't work.
+            var result = Result.Complete;
+
+            var items = await db.Exchanges.AsNoTracking() // This is neccessary, because we've previously loaded collections in this context, so Where() clause wouldn't work.
                 .Where(exchange => exchange.Date >= startDate && exchange.Date <= endDate)
                 .Include(currency => currency.Currencies.Where(currency => currencyCodes.Values.Contains(currency.Denominator)))
-                .ThenInclude(x => x.Rates.Where(rate => currencyCodes.Keys.Contains(rate.CurrencyName))).AsSplitQuery()).ToListAsync();
+                .ThenInclude(x => x.Rates.Where(rate => currencyCodes.Keys.Contains(rate.CurrencyName))).AsSplitQuery().ToListAsync();
 
-            // This will filter unnecessary rates - it needs to be done locally, because the dictionary cannot be embedded inside SQL.
-            items
-                .ForEach(exchange => exchange.Currencies
-                .ForEach(currency => currency.Rates = currency.Rates
-                .Where(rate => currencyCodes[rate.CurrencyName].Equals(currency.Denominator))
-                .ToList()));
+            foreach (var exchange in items)
+            {
+                if (result.Equals(Result.Incomplete)) break; // We are missing too much data - use external API.
 
-            return items;
+                foreach (var currency in exchange.Currencies)
+                {
+                    currency.Rates.RemoveAll(rate => !currencyCodes[rate.CurrencyName].Equals(currency.Denominator));
+                    if (!currencyCodes.Keys.All(x => currency.Rates.Any(y => y.CurrencyName.Equals(x))))
+                    {
+                        result = Result.Incomplete; // We are missing a currency.
+                    }
+                }
+
+            }
+
+            return new DatabaseResult
+            {
+                Items = items,
+                Result = result,
+            };
         }
 
         private async Task AddRecordsToDatabase(IEnumerable<Exchange> days)
@@ -63,13 +79,12 @@ namespace ExchangeRatesAPI.Controllers
                 var dbDay = await db.Exchanges
                     .Include(x => x.Currencies)
                     .ThenInclude(x => x.Rates)
-                    .OrderBy(x => x.Date) // Only to remove warning about using AsSplitQuery() without sorting.
+                    .OrderBy(x => x.Date) // Only to remove warning about using AsSplitQuery() without sorting. TODO?
                     .AsSplitQuery()
                     .SingleOrDefaultAsync(x => x.Date.Equals(day.Date));
 
                 if (dbDay != null)
                 {
-
                     var dbCurrencies = dbDay.Currencies;
 
                     foreach (var currency in day.Currencies)
@@ -87,7 +102,6 @@ namespace ExchangeRatesAPI.Controllers
                         }
                         else dbDay.Currencies.Add(currency);
                     }
-
                 }
                 else db.Exchanges.Add(day);
             }
@@ -97,38 +111,117 @@ namespace ExchangeRatesAPI.Controllers
 
         private string AggregateStrings(IEnumerable<string> strings) => strings.Aggregate((x, y) => x + "+" + y);
 
-        private async Task<IEnumerable<Exchange>> ExternalGetExchangeRates(DateTime startDate, DateTime endDate, Dictionary<string, string> currencyCodes)
+        private async Task AddMissingData(ICollection<Exchange> days, DateTime start, DateTime end, Dictionary<string, string> currencyCodes)
+        {
+            var discDays = days.ToDictionary(x => x.Date);
+            var minDate = days.Select(x => x.Date).Min();
+
+            for (DateTime day = start; day <= end; day = day.AddDays(1))
+            {
+                if (discDays.ContainsKey(day))
+                {
+                    var exchange = discDays[day];
+
+                    foreach (var denominator in currencyCodes.Values)
+                    {
+                        var currency = exchange.Currencies.SingleOrDefault(x => x.Denominator.Equals(denominator));
+                        if (currency != null)
+                        {
+                            foreach (var nominator in currencyCodes.Keys)
+                            {
+                                var rate = currency.Rates.SingleOrDefault(x => x.CurrencyName.Equals(nominator));
+                                if (rate == null)
+                                {
+                                    double newRate = 0;
+                                    for (DateTime innerDate = day.Subtract(TimeSpan.FromDays(1)); day >= minDate; day = day.Subtract(TimeSpan.FromDays(1)))
+                                    {
+                                        if (!discDays.Keys.Contains(innerDate)) continue; // Consecutive missing days.
+
+                                        var innerRate = discDays[innerDate].Currencies
+                                            .SingleOrDefault(x => x.Denominator.Equals(denominator))?
+                                            .Rates.SingleOrDefault(x => x.CurrencyName.Equals(nominator))?.Rate;
+
+                                        if (innerRate != null)
+                                        {
+                                            newRate = innerRate.Value;
+                                            break;
+                                        }
+                                    }
+
+                                    if (newRate == 0)
+                                        throw new ArgumentOutOfRangeException(paramName: nameof(days), string.Format(Properties.Resources.ERROR_API_NO_DATA, DaysFiller));
+
+                                    currency.Rates.Add(new ExchangeRate
+                                    {
+                                        CurrencyName = nominator,
+                                        Rate = newRate,
+                                    });
+                                }
+                                // else => we are good.
+                            }
+                        }
+                        else
+                        {
+                            exchange.Currencies.Add(new Currency
+                            {
+                                Denominator = denominator,
+                                Rates = new List<ExchangeRate>(),
+                            });
+                            day = day.Subtract(TimeSpan.FromDays(1)); // In order to copy contents, we want to execute loop on this day once again.
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    var newExchange = new Exchange
+                    {
+                        Date = day,
+                        Currencies = new List<Currency>(),
+                    };
+                    days.Add(newExchange);
+                    discDays.Add(newExchange.Date, newExchange);
+
+                    day = day.Subtract(TimeSpan.FromDays(1)); // In order to copy contents, we want to execute loop on this day once again.
+                    continue;
+                }
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private async Task<ICollection<Exchange>> ExternalGetExchangeRates(DateTime startDate, DateTime endDate, Dictionary<string, string> currencyCodes)
         {
             var apiUrl = string.Format(Properties.Resources.API_ENDPOINT, AggregateStrings(currencyCodes.Keys), AggregateStrings(currencyCodes.Values), FormatDate(startDate), FormatDate(endDate));
             var content = (await http.GetAsync(apiUrl)).Content;
             if (content == null) return new List<Exchange>(); // No data.
             var api = await JsonSerializer.DeserializeAsync<API>(await content.ReadAsStreamAsync());
 
-            var dates = api.structure.dimensions.observation.Single(x => x.role.Equals("time")).values.Select(x => x.start.Date).ToArray();
+            var dates = api.structure.dimensions.observation.Single(x => x.role.Equals("time")).values.Select(x => x.start.Date).ToList();
 
             var currencyDesc = api.structure.dimensions.series.Single(x => x.id.Equals("CURRENCY"));
-            var currenciesNames = currencyDesc.values.Select(x => x.id).ToArray(); // Array of currencies. Index is equal to the appropriate code in the dataSet's name - read below.
+            var currenciesNames = currencyDesc.values.Select(x => x.id).ToList(); // Array of currencies. Index is equal to the appropriate code in the dataSet's name - read below.
             var currencyColumn = Array.IndexOf(api.structure.dimensions.series, currencyDesc); // API returns dataSets named like 0:0:0:0. This variable indicates which number represents the currency name.
 
             var currencyDenomDesc = api.structure.dimensions.series.Single(x => x.id.Equals("CURRENCY_DENOM"));
-            var currencyDenomsNames = currencyDenomDesc.values.Select(x => x.id).ToArray();
+            var currencyDenomsNames = currencyDenomDesc.values.Select(x => x.id).ToList();
             var currencyDenomColumn = Array.IndexOf(api.structure.dimensions.series, currencyDenomDesc);
 
-            var days = new Exchange[dates.Length];
+            var days = Enumerable.Repeat<Exchange>(null, dates.Count).ToList();
 
-            for (var day = 0; day < days.Length; day++) // Fill days and currencies.
+            for (var day = 0; day < days.Count; day++) // Fill days and currencies.
             {
                 days[day] = new Exchange
                 {
                     Date = dates[day],
-                    Currencies = new List<Currency>(Enumerable.Repeat<Currency>(null, currencyDenomsNames.Length)), // Create list with nulls to allow random index access.
+                    Currencies = new List<Currency>(Enumerable.Repeat<Currency>(null, currencyDenomsNames.Count)), // Create list with nulls to allow random index access.
                 };
 
                 for (var denominatorId = 0; denominatorId < days[day].Currencies.Count; denominatorId++)
                 {
                     var currency = new Currency
                     {
-                        Rates = new List<ExchangeRate>(Enumerable.Repeat<ExchangeRate>(null, currenciesNames.Length)),
+                        Rates = new List<ExchangeRate>(Enumerable.Repeat<ExchangeRate>(null, currenciesNames.Count)),
                     };
 
                     days[day].Currencies[denominatorId] = currency;
@@ -177,39 +270,54 @@ namespace ExchangeRatesAPI.Controllers
             string apiKey
         )
         {
-            try
+            var token = await db.Tokens.FindAsync(apiKey);
+            if (token == null) db.Tokens.Add(token = new ApiKey
             {
-                if (!await auth.IsAuthorizedAsync(apiKey)) return Unauthorized();
+                Created = DateTime.UnixEpoch,
+                Key = apiKey,
+            }); // Non-existing token - let's just log it.
 
-                await db.Requests.AddAsync(new Request
-                {
-                    apiKey = await db.Tokens.FindAsync(apiKey),
-                    currencyCodes = AggregateStrings(currencyCodes.Keys),
-                    currencyDenomCodes = AggregateStrings(currencyCodes.Values),
-                    startDate = startDate,
-                    endDate = endDate,
-                    RequestDate = DateTime.Now,
-                });
-                await db.SaveChangesAsync();
+            await db.Requests.AddAsync(new Request
+            {
+                apiKey = token,
+                currencyCodes = AggregateStrings(currencyCodes.Keys),
+                currencyDenomCodes = AggregateStrings(currencyCodes.Values),
+                startDate = startDate,
+                endDate = endDate,
+                RequestDate = DateTime.Now,
+            }); ;
+            await db.SaveChangesAsync();
 
-                startDate = startDate.Date; // Remove time - leave only date, so...
-                endDate = endDate.Date;
-                var noOfDays = (int)(endDate - startDate).TotalDays + 1; // ... this should be integer.
+            if (!await auth.IsAuthorizedAsync(apiKey)) return Unauthorized();
 
-                if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
+            startDate = startDate.Date; // Remove time - leave only date.
+            endDate = endDate.Date;
 
+            if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
 
-                var temp = await ExternalGetExchangeRates(startDate, endDate, currencyCodes);
-                await AddRecordsToDatabase(temp);
-                // TODO: Get items from database.
+            var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
 
-
-                return Ok(await GetRecordsFromDatabase(currencyCodes, startDate, endDate));
+            if (dbResult.Equals(Result.Complete))
+            {
+                return Ok(dbResult.Items);
             }
-            catch (Exception e)
+            else if (false && dbResult.Equals(Result.MissingDays))
             {
-                _logger.Log(LogLevel.Error, e.Message);
-                return StatusCode(500);
+                throw new NotImplementedException();
+                // TODO: Missing days.
+            }
+            else
+            {
+                // If rates from startDate or endDate are unknown we will use values from previous/future days.
+                var futureDay = endDate.AddDays(DaysFiller);
+                var yesterday = DateTime.Today.Subtract(TimeSpan.FromDays(1));
+                if (futureDay > yesterday) futureDay = yesterday;
+                var pastDay = startDate.Subtract(TimeSpan.FromDays(DaysFiller));
+
+                var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
+                await AddMissingData(externalDb, startDate, endDate, currencyCodes);
+                await AddRecordsToDatabase(externalDb);
+                return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate));
             }
         }
     }

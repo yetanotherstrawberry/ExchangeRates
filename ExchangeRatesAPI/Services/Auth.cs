@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,7 +18,7 @@ namespace ExchangeRatesAPI.Services
         {
             var dbLastApiKey = await db.Tokens.OrderBy(x => x.Created).LastAsync();
 
-            if (dbLastApiKey.Key.Equals(apiKey)) return true; // Newest token provided - access granted.
+            if (dbLastApiKey.Key.Equals(apiKey) && !dbLastApiKey.Created.Equals(DateTime.UnixEpoch)) return true; // Newest token provided - access granted.
             else return false;
         }
     }

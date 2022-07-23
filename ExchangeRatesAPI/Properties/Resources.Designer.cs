@@ -68,5 +68,14 @@ namespace ExchangeRatesAPI.Properties {
                 return ResourceManager.GetString("API_ENDPOINT", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Looks like the external API doesn&apos;t have exchange rate history for the requested day and past {0} day(s)..
+        /// </summary>
+        internal static string ERROR_API_NO_DATA {
+            get {
+                return ResourceManager.GetString("ERROR_API_NO_DATA", resourceCulture);
+            }
+        }
     }
 }

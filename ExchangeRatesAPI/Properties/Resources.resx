@@ -120,4 +120,7 @@
   <data name="API_ENDPOINT" xml:space="preserve">
     <value>https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.{0}.{1}.SP00.A?startPeriod={2}&amp;endPeriod={3}&amp;format=jsondata&amp;detail=dataonly</value>
   </data>
+  <data name="ERROR_API_NO_DATA" xml:space="preserve">
+    <value>Looks like the external API doesn't have exchange rate history for the requested day and past {0} day(s).</value>
+  </data>
 </root>

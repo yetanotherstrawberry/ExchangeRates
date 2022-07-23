@@ -12,7 +12,6 @@ namespace ExchangeRatesAPI
         public DbSet<Request> Requests { get; set; }
         public DbSet<ApiKey> Tokens { get; set; }
         
-
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
