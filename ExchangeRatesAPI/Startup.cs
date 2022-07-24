@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
 using System.Net.Http;
 
 namespace ExchangeRatesAPI
@@ -27,6 +28,11 @@ namespace ExchangeRatesAPI
             services.AddResponseCaching();
 
             services.AddSingleton<HttpClient>();
+
+            services.AddMemoryCache(options =>
+            {
+                options.ExpirationScanFrequency = TimeSpan.FromDays(1);
+            });
 
             services.AddControllers();
             services.AddSwaggerGen();

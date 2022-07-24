@@ -94,36 +94,41 @@ namespace Tests
         {
             // Database should be flushed from time to time for this test to work properly.
             // We try to fetch the same random rates twice.
+
             var random = new Random();
-            int day = random.Next(1, 29), month = random.Next(1, 13), year = random.Next(2012, 2021);
 
-            Stopwatch sw = new Stopwatch();
+            for (int i = 0; i < 10; i++)
+            {
+                int day = random.Next(1, 29), month = random.Next(1, 13), year = random.Next(2012, 2021);
 
-            sw.Start();
-            await client.SendAsync(NewRequestMessage(
-                new DateTime(year, month, day),
-                new DateTime(year, month, day),
-                new Dictionary<string, string>{
+                Stopwatch sw = new Stopwatch();
+
+                sw.Start();
+                await client.SendAsync(NewRequestMessage(
+                    new DateTime(year, month, day),
+                    new DateTime(year, month, day),
+                    new Dictionary<string, string>{
                     { "PLN", "EUR" },
                     { "USD", "EUR" },
-                }));
-            sw.Stop();
+                    }));
+                sw.Stop();
 
-            var firstMs = sw.ElapsedMilliseconds;
+                var firstMs = sw.ElapsedMilliseconds;
 
-            sw.Restart();
-            await client.SendAsync(NewRequestMessage(
-                new DateTime(year, month, day),
-                new DateTime(year, month, day),
-                new Dictionary<string, string>{
+                sw.Restart();
+                await client.SendAsync(NewRequestMessage(
+                    new DateTime(year, month, day),
+                    new DateTime(year, month, day),
+                    new Dictionary<string, string>{
                     { "PLN", "EUR" },
                     { "USD", "EUR" },
-                }));
-            sw.Stop();
+                    }));
+                sw.Stop();
 
-            var secondMs = sw.ElapsedMilliseconds;
+                var secondMs = sw.ElapsedMilliseconds;
 
-            Assert.IsTrue(firstMs > secondMs * 10); // We assume that cached calles are much faster than calles to the external API.
+                Assert.IsTrue(firstMs > secondMs); // We assume that cached calls are faster than calls to the external API.
+            }
         }
     }
 }

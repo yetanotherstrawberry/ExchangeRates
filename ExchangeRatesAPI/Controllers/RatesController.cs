@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -20,16 +22,18 @@ namespace ExchangeRatesAPI.Controllers
         private readonly ILogger<RatesController> logger;
         private readonly ApplicationDbContext db;
         private readonly HttpClient http;
+        private readonly IMemoryCache cache;
 
         // Just in case the startDate is a day without exchange rates,
         // how many days in the past should we check for the last known rate? (will always use the most recent)
         private const int DaysFiller = 5;
 
-        public RatesController(ApplicationDbContext context, HttpClient httpClient, ILogger<RatesController> ilogger)
+        public RatesController(ApplicationDbContext context, HttpClient httpClient, ILogger<RatesController> ilogger, IMemoryCache icache)
         {
             db = context;
             http = httpClient;
             logger = ilogger;
+            cache = icache;
         }
 
         private string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
@@ -212,9 +216,9 @@ namespace ExchangeRatesAPI.Controllers
             }
         }
 
-        private async Task<ICollection<Exchange>> ExternalGetExchangeRates(DateTime startDate, DateTime endDate, Dictionary<string, string> currencyCodes)
+        private async Task<ICollection<Exchange>> ExternalGetExchangeRates(DateTime startDate, DateTime endDate, string currencyKeys, string currencyValues)
         {
-            var apiUrl = string.Format(Properties.Resources.API_ENDPOINT, AggregateStrings(currencyCodes.Keys), AggregateStrings(currencyCodes.Values), FormatDate(startDate), FormatDate(endDate));
+            var apiUrl = string.Format(Properties.Resources.API_ENDPOINT, currencyKeys, currencyValues, FormatDate(startDate), FormatDate(endDate));
             var content = (await http.GetAsync(apiUrl)).Content;
             if (content == null) return new List<Exchange>(); // No data.
             var api = await JsonSerializer.DeserializeAsync<API>(await content.ReadAsStreamAsync());
@@ -283,6 +287,19 @@ namespace ExchangeRatesAPI.Controllers
             return days;
         }
 
+        private IActionResult ReturnJson(string json) => new ContentResult
+        {
+            ContentType = MediaTypeNames.Application.Json,
+            StatusCode = StatusCodes.Status200OK,
+            Content = json,
+        };
+
+        private string SerializeToJson<T>(T obj) => JsonSerializer.Serialize(obj, options: new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        });
+
         /*
          * currencyCodes:
          * (PLN, EUR) entry means we want to convert 1 EUR to PLN.
@@ -294,9 +311,9 @@ namespace ExchangeRatesAPI.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)] // Any exception
         [ResponseCache(
             Duration = 2880,
-            Location = ResponseCacheLocation.Client,
+            Location = ResponseCacheLocation.Client, // Using ResponseCacheLocation.Any will cause the controller to ignore currencyCodes!
             VaryByQueryKeys = new string[] {
-                "*",
+                "*", // This does not include [FromBody] parameter.
         })]
         public async Task<IActionResult> Get(
             [FromBody] Dictionary<string, string> currencyCodes,
@@ -306,10 +323,18 @@ namespace ExchangeRatesAPI.Controllers
         {
             try
             {
+                var dictKeys = AggregateStrings(currencyCodes.Keys);
+                var dictValues = AggregateStrings(currencyCodes.Values);
+
+                if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
+
                 startDate = startDate.Date; // Remove time - leave only date.
                 endDate = endDate.Date;
 
-                if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
+                var cacheKey = dictKeys + "_" + dictValues + "_" + FormatDate(startDate) + "_" + FormatDate(endDate);
+
+                if (cache.TryGetValue(cacheKey, out string cacheRet))
+                    return ReturnJson(cacheRet); // We use cached result.
 
                 var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
                 IEnumerable<Exchange> ret;
@@ -326,14 +351,16 @@ namespace ExchangeRatesAPI.Controllers
                     if (futureDay > yesterday) futureDay = yesterday;
                     var pastDay = startDate.Subtract(TimeSpan.FromDays(DaysFiller));
 
-                    var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
+                    var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, dictKeys, dictValues);
                     AddMissingData(externalDb, startDate, endDate, currencyCodes);
                     await AddRecordsToDatabase(externalDb); // Context tracking may be cleared after this line.
 
                     ret = externalDb.Where(x => x.Date <= endDate && x.Date >= startDate);
                 }
 
-                return Ok(ret);
+                var retString = SerializeToJson(ret);
+                cache.Set(cacheKey, retString);
+                return ReturnJson(retString);
             }
             catch (Exception e)
             {

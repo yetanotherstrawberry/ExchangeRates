@@ -13,11 +13,11 @@ namespace ExchangeRatesAPI.Models
 
     public class DataSet
     {
-        public Dictionary<string, Series> series { get; set; }
+        public IDictionary<string, Series> series { get; set; }
     }
     public class Series
     {
-        public Dictionary<string, double[]> observations { get; set; }
+        public IDictionary<string, IList<double>> observations { get; set; }
     }
 
     public class Structure
