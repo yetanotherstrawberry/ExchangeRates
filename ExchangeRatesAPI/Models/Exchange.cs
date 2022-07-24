@@ -6,6 +6,6 @@ namespace ExchangeRatesAPI.Models
     public class Exchange
     {
         public DateTime Date { get; set; }
-        public List<Currency> Currencies { get; set; }
+        public IList<Currency> Currencies { get; set; }
     }
 }

@@ -7,7 +7,7 @@ namespace ExchangeRatesAPI.Models
 
     public class API
     {
-        public DataSet[] dataSets { get; set; }
+        public IList<DataSet> dataSets { get; set; }
         public Structure structure { get; set; }
     }
 
@@ -26,13 +26,13 @@ namespace ExchangeRatesAPI.Models
     }
     public class Dimensions
     {
-        public Observation[] observation { get; set; }
-        public SeriesDescriptor[] series { get; set; }
+        public IList<Observation> observation { get; set; }
+        public IList<SeriesDescriptor> series { get; set; }
     }
     public class Observation
     {
         public string role { get; set; }
-        public Value[] values { get; set; }
+        public IList<Value> values { get; set; }
     }
     public class Value
     {
@@ -41,7 +41,7 @@ namespace ExchangeRatesAPI.Models
     public class SeriesDescriptor
     {
         public string id { get; set; }
-        public ValueDescriptor[] values { get; set; }
+        public IList<ValueDescriptor> values { get; set; }
     }
     public class ValueDescriptor
     {
