@@ -1,8 +1,9 @@
 ﻿using ExchangeRatesAPI.Models;
-using ExchangeRatesAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,18 +17,19 @@ namespace ExchangeRatesAPI.Controllers
     [Route("[controller]")]
     public class RatesController : ControllerBase
     {
+        private readonly ILogger<RatesController> logger;
         private readonly ApplicationDbContext db;
         private readonly HttpClient http;
-        private readonly Auth auth;
 
-        // Just in case the startDate is a day without exchange rates, how many days in the past should we check for the last known rate? (will always use last)
+        // Just in case the startDate is a day without exchange rates,
+        // how many days in the past should we check for the last known rate? (will always use last)
         private const int DaysFiller = 5;
 
-        public RatesController(ApplicationDbContext context, HttpClient http, Auth auth)
+        public RatesController(ApplicationDbContext context, HttpClient httpClient, ILogger<RatesController> ilogger)
         {
             db = context;
-            this.http = http;
-            this.auth = auth;
+            http = httpClient;
+            logger = ilogger;
         }
 
         private string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
@@ -37,10 +39,11 @@ namespace ExchangeRatesAPI.Controllers
             DateTime startDate,
             DateTime endDate)
         {
-
             var result = Result.Complete;
 
-            var items = await db.Exchanges.AsNoTracking() // This is neccessary, because we've previously loaded collections in this context, so Where() clause wouldn't work.
+            // AsNoTracking() is neccessary, because we've previously loaded collections in this context,
+            // so Where() clause wouldn't work. Also it's faster.
+            var items = await db.Exchanges.AsNoTracking()
                 .Where(exchange => exchange.Date >= startDate && exchange.Date <= endDate)
                 .Include(currency => currency.Currencies.Where(currency => currencyCodes.Values.Contains(currency.Denominator)))
                 .ThenInclude(x => x.Rates.Where(rate => currencyCodes.Keys.Contains(rate.CurrencyName))).AsSplitQuery().ToListAsync();
@@ -57,7 +60,6 @@ namespace ExchangeRatesAPI.Controllers
                         result = Result.Incomplete; // We are missing a currency.
                     }
                 }
-
             }
 
             return new DatabaseResult
@@ -101,7 +103,25 @@ namespace ExchangeRatesAPI.Controllers
                 else db.Exchanges.Add(day);
             }
 
-            await db.SaveChangesAsync();
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when ((ex.InnerException as SqlException)?.Number == 2627)
+            {
+                // Someone else just (concurrently?) added some rate(s). It's okay - just discard it.
+                logger.LogWarning(Properties.Resources.ERROR_ITEM_ALREADY_IN_DB);
+                LogExceptions(ex);
+            }
+        }
+
+        private void LogExceptions(Exception ex)
+        {
+            logger.LogInformation(Properties.Resources.ERR_SHOWING_EXC);
+            for (Exception exc = ex; exc != null; exc = exc.InnerException)
+            {
+                logger.LogWarning(exc.Message);
+            }
         }
 
         private string AggregateStrings(IEnumerable<string> strings) => strings.Aggregate((x, y) => x + "+" + y);
@@ -144,7 +164,8 @@ namespace ExchangeRatesAPI.Controllers
                                     }
 
                                     if (newRate == 0)
-                                        throw new ArgumentOutOfRangeException(paramName: nameof(days), string.Format(Properties.Resources.ERROR_API_NO_DATA, DaysFiller));
+                                        throw new ArgumentOutOfRangeException(paramName: nameof(days),
+                                            string.Format(Properties.Resources.ERROR_API_NO_DATA, DaysFiller));
 
                                     currency.Rates.Add(new ExchangeRate
                                     {
@@ -162,7 +183,8 @@ namespace ExchangeRatesAPI.Controllers
                                 Denominator = denominator,
                                 Rates = new List<ExchangeRate>(),
                             });
-                            day = day.Subtract(TimeSpan.FromDays(1)); // In order to copy contents, we want to execute loop on this day once again.
+                            // In order to copy contents, we want to execute loop on this day once again.
+                            day = day.Subtract(TimeSpan.FromDays(1));
                             continue;
                         }
                     }
@@ -193,8 +215,10 @@ namespace ExchangeRatesAPI.Controllers
             var dates = api.structure.dimensions.observation.Single(x => x.role.Equals("time")).values.Select(x => x.start.Date).ToList();
 
             var currencyDesc = api.structure.dimensions.series.Single(x => x.id.Equals("CURRENCY"));
-            var currenciesNames = currencyDesc.values.Select(x => x.id).ToList(); // Array of currencies. Index is equal to the appropriate code in the dataSet's name - read below.
-            var currencyColumn = Array.IndexOf(api.structure.dimensions.series, currencyDesc); // API returns dataSets named like 0:0:0:0. This variable indicates which number represents the currency name.
+            // Array of currencies. Index is equal to the appropriate code in the dataSet's name - read below.
+            var currenciesNames = currencyDesc.values.Select(x => x.id).ToList();
+            // API returns dataSets named like 0:0:0:0. This variable indicates which number represents the currency name.
+            var currencyColumn = Array.IndexOf(api.structure.dimensions.series, currencyDesc);
 
             var currencyDenomDesc = api.structure.dimensions.series.Single(x => x.id.Equals("CURRENCY_DENOM"));
             var currencyDenomsNames = currencyDenomDesc.values.Select(x => x.id).ToList();
@@ -207,7 +231,8 @@ namespace ExchangeRatesAPI.Controllers
                 days[day] = new Exchange
                 {
                     Date = dates[day],
-                    Currencies = new List<Currency>(Enumerable.Repeat<Currency>(null, currencyDenomsNames.Count)), // Create list with nulls to allow random index access.
+                    // Create list with nulls to allow random index access.
+                    Currencies = new List<Currency>(Enumerable.Repeat<Currency>(null, currencyDenomsNames.Count)),
                 };
 
                 for (var denominatorId = 0; denominatorId < days[day].Currencies.Count; denominatorId++)
@@ -234,8 +259,8 @@ namespace ExchangeRatesAPI.Controllers
             {
                 foreach (var series in dataSet.series) // Fill exchange rates.
                 {
-
-                    var keySplit = series.Key.Split(':').Select(x => int.Parse(x)).ToArray(); // Name of the series splitted to dimensions.
+                    // Name of the series splitted to dimensions.
+                    var keySplit = series.Key.Split(':').Select(x => int.Parse(x)).ToArray();
 
                     foreach (var rate in series.Value.observations)
                     {
@@ -256,56 +281,51 @@ namespace ExchangeRatesAPI.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)] // Incorrect key
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Future date or today (no rates)
         [ProducesResponseType(StatusCodes.Status500InternalServerError)] // Any exception
+        [ResponseCache(
+            Duration = 2880,
+            Location = ResponseCacheLocation.Any,
+            VaryByQueryKeys = new string[] {
+                "currencyCodes",
+                "startDate",
+                "endDate",
+        })]
         public async Task<IActionResult> Get(
             [FromBody] Dictionary<string, string> currencyCodes,
             DateTime startDate,
-            DateTime endDate,
-            string apiKey
+            DateTime endDate
         )
         {
-            var token = await db.Tokens.FindAsync(apiKey);
-            if (token == null) db.Tokens.Add(token = new ApiKey
+            try
             {
-                Created = DateTime.UnixEpoch,
-                Key = apiKey,
-            }); // Non-existing token - let's just log it.
+                startDate = startDate.Date; // Remove time - leave only date.
+                endDate = endDate.Date;
 
-            await db.Requests.AddAsync(new Request
-            {
-                apiKey = token,
-                currencyCodes = AggregateStrings(currencyCodes.Keys),
-                currencyDenomCodes = AggregateStrings(currencyCodes.Values),
-                startDate = startDate,
-                endDate = endDate,
-                RequestDate = DateTime.Now,
-            }); ;
-            await db.SaveChangesAsync();
+                if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
 
-            if (!await auth.IsAuthorizedAsync(apiKey)) return Unauthorized();
+                var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
 
-            startDate = startDate.Date; // Remove time - leave only date.
-            endDate = endDate.Date;
+                if (dbResult.Equals(Result.Complete))
+                {
+                    return Ok(dbResult.Items);
+                }
+                else
+                {
+                    // If rates from startDate or endDate are unknown we will use values from previous/future days.
+                    var futureDay = endDate.AddDays(DaysFiller);
+                    var yesterday = DateTime.Today.Subtract(TimeSpan.FromDays(1));
+                    if (futureDay > yesterday) futureDay = yesterday;
+                    var pastDay = startDate.Subtract(TimeSpan.FromDays(DaysFiller));
 
-            if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
-
-            var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
-
-            if (dbResult.Equals(Result.Complete))
-            {
-                return Ok(dbResult.Items);
+                    var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
+                    AddMissingData(externalDb, startDate, endDate, currencyCodes);
+                    await AddRecordsToDatabase(externalDb);
+                    return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate).OrderBy(x => x.Date));
+                }
             }
-            else
+            catch (Exception e)
             {
-                // If rates from startDate or endDate are unknown we will use values from previous/future days.
-                var futureDay = endDate.AddDays(DaysFiller);
-                var yesterday = DateTime.Today.Subtract(TimeSpan.FromDays(1));
-                if (futureDay > yesterday) futureDay = yesterday;
-                var pastDay = startDate.Subtract(TimeSpan.FromDays(DaysFiller));
-
-                var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
-                AddMissingData(externalDb, startDate, endDate, currencyCodes);
-                await AddRecordsToDatabase(externalDb);
-                return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate).OrderBy(x => x.Date));
+                logger.LogWarning(e.Message);
+                return StatusCode(500);
             }
         }
     }

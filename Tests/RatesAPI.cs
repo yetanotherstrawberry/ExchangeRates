@@ -16,7 +16,8 @@ namespace Tests
     [TestClass]
     public class RatesAPI
     {
-        private const string apiKey = "apiTest";
+        // Remeber to flush the table with tokens or to replace this string with your API key.
+        private const string apiKey = "testECB";
 
         private readonly WebApplicationFactory<Startup> application;
         private readonly HttpClient client;
@@ -90,7 +91,7 @@ namespace Tests
             // Database should be flushed from time to time for this test to work properly.
             // We try to fetch the same random rates twice.
             var random = new Random();
-            int day = random.Next(0, 29), month = random.Next(1, 13), year = random.Next(2010, 2021);
+            int day = random.Next(1, 29), month = random.Next(1, 13), year = random.Next(2012, 2021);
 
             Stopwatch sw = new Stopwatch();
 

@@ -1,5 +1,4 @@
 ﻿using ExchangeRatesAPI.Models;
-using ExchangeRatesAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -14,27 +13,23 @@ namespace ExchangeRatesAPI.Controllers
     {
         private readonly ILogger<RatesController> _logger;
         private readonly ApplicationDbContext db;
-        private readonly Auth auth;
 
-        public TokenController(ILogger<RatesController> logger, ApplicationDbContext context, Auth auth)
+        public TokenController(ILogger<RatesController> logger, ApplicationDbContext context)
         {
             _logger = logger;
             db = context;
-            this.auth = auth;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)] // Incorrect key
         [ProducesResponseType(StatusCodes.Status500InternalServerError)] // Any exception
-        public async Task<IActionResult> Get(string apiKey)
+        public async Task<IActionResult> Get()
         {
             ApiKey ret = null;
 
             try
             {
-                if (!await auth.IsAuthorizedAsync(apiKey)) return Unauthorized();
-
                 ret = new ApiKey
                 {
                     Key = Guid.NewGuid().ToString(),

@@ -121,6 +121,18 @@
     <value>https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.{0}.{1}.SP00.A?startPeriod={2}&amp;endPeriod={3}&amp;format=jsondata&amp;detail=dataonly</value>
   </data>
   <data name="ERROR_API_NO_DATA" xml:space="preserve">
-    <value>Looks like the external API doesn't have exchange rate history for the requested day and past {0} day(s).</value>
+    <value>Looks like the external API does not have exchange rate history for the requested day and past {0} day(s).</value>
+  </data>
+  <data name="ERROR_BAD_KEY" xml:space="preserve">
+    <value>Provided API key is wrong.</value>
+  </data>
+  <data name="ERROR_ITEM_ALREADY_IN_DB" xml:space="preserve">
+    <value>Looks like there was an attempt to insert a rate that is already in the database. Did some just added it concurrently during this request?</value>
+  </data>
+  <data name="ERROR_NO_KEY" xml:space="preserve">
+    <value>No API key has been provided.</value>
+  </data>
+  <data name="ERR_SHOWING_EXC" xml:space="preserve">
+    <value>Showing exception(s):</value>
   </data>
 </root>

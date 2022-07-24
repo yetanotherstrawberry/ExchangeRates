@@ -70,11 +70,47 @@ namespace ExchangeRatesAPI.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Looks like the external API doesn&apos;t have exchange rate history for the requested day and past {0} day(s)..
+        ///   Looks up a localized string similar to Showing exception(s):.
+        /// </summary>
+        internal static string ERR_SHOWING_EXC {
+            get {
+                return ResourceManager.GetString("ERR_SHOWING_EXC", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Looks like the external API does not have exchange rate history for the requested day and past {0} day(s)..
         /// </summary>
         internal static string ERROR_API_NO_DATA {
             get {
                 return ResourceManager.GetString("ERROR_API_NO_DATA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Provided API key is wrong..
+        /// </summary>
+        internal static string ERROR_BAD_KEY {
+            get {
+                return ResourceManager.GetString("ERROR_BAD_KEY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Looks like there was an attempt to insert a rate that is already in the database. Did some just added it concurrently during this request?.
+        /// </summary>
+        internal static string ERROR_ITEM_ALREADY_IN_DB {
+            get {
+                return ResourceManager.GetString("ERROR_ITEM_ALREADY_IN_DB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No API key has been provided..
+        /// </summary>
+        internal static string ERROR_NO_KEY {
+            get {
+                return ResourceManager.GetString("ERROR_NO_KEY", resourceCulture);
             }
         }
     }
