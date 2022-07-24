@@ -36,7 +36,7 @@ namespace ExchangeRatesAPI.Controllers
             cache = icache;
         }
 
-        private string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
+        private string FormatDate(DateTime date) => date.ToString(Properties.Resources.API_DATE_FORMAT);
 
         private async Task<DatabaseResult> GetRecordsFromDatabase(
             Dictionary<string, string> currencyCodes,
@@ -141,7 +141,7 @@ namespace ExchangeRatesAPI.Controllers
             }
         }
 
-        private string AggregateStrings(IEnumerable<string> strings) => strings.Aggregate((x, y) => x + "+" + y);
+        private string AggregateStrings(IEnumerable<string> strings) => strings.Aggregate((x, y) => x + Properties.Resources.API_STRING_CONCAT + y);
 
         private void AddMissingData(ICollection<Exchange> days, DateTime start, DateTime end, Dictionary<string, string> currencyCodes)
         {

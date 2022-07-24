@@ -61,11 +61,29 @@ namespace ExchangeRatesAPI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to yyyy-MM-dd.
+        /// </summary>
+        internal static string API_DATE_FORMAT {
+            get {
+                return ResourceManager.GetString("API_DATE_FORMAT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.{0}.{1}.SP00.A?startPeriod={2}&amp;endPeriod={3}&amp;format=jsondata&amp;detail=dataonly.
         /// </summary>
         internal static string API_ENDPOINT {
             get {
                 return ResourceManager.GetString("API_ENDPOINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to +.
+        /// </summary>
+        internal static string API_STRING_CONCAT {
+            get {
+                return ResourceManager.GetString("API_STRING_CONCAT", resourceCulture);
             }
         }
         

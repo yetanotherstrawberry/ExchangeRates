@@ -1,0 +1,237 @@
+{
+	"info": {
+		"_postman_id": "29d3e6d4-4e49-4a5b-8a63-2116f031bbec",
+		"name": "API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Exchange Rate",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true,
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "default",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"PLN\": \"EUR\",\r\n    \"USD\": \"EUR\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://localhost:5001/Rates?startDate=2022-07-01&endDate=2022-07-18&apiKey=testECB",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"Rates"
+					],
+					"query": [
+						{
+							"key": "startDate",
+							"value": "2022-07-01"
+						},
+						{
+							"key": "endDate",
+							"value": "2022-07-18"
+						},
+						{
+							"key": "apiKey",
+							"value": "testECB"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Exchange Rate",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "",
+								"value": "",
+								"type": "default",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"PLN\": \"EUR\",\r\n    \"USD\": \"EUR\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://localhost:5001/Rates?startDate=2022-07-01&endDate=2022-07-18&apiKey=testECB",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"Rates"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2022-07-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2022-07-18"
+								},
+								{
+									"key": "apiKey",
+									"value": "testECB"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 24 Jul 2022 21:00:56 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Server",
+							"value": "Kestrel"
+						},
+						{
+							"key": "Content-Length",
+							"value": "2798"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "private,max-age=2880"
+						}
+					],
+					"cookie": [],
+					"body": "[\n    {\n        \"date\": \"2022-07-01T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7168\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0425\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-04T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.71\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0455\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-05T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7448\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.029\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-06T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.771\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0177\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-07T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7721\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.018\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-08T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.763\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0163\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-11T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7968\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0098\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-12T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.819\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0042\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-13T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.824\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0067\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-14T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.8146\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0005\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-15T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7953\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0059\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-18T00:00:00+02:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.776\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0131\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-02T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7168\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0425\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-03T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7168\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0425\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-09T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.763\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0163\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-10T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.763\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0163\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-16T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7953\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0059\n                    }\n                ]\n            }\n        ]\n    },\n    {\n        \"date\": \"2022-07-17T00:00:00\",\n        \"currencies\": [\n            {\n                \"denominator\": \"EUR\",\n                \"rates\": [\n                    {\n                        \"currencyName\": \"PLN\",\n                        \"rate\": 4.7953\n                    },\n                    {\n                        \"currencyName\": \"USD\",\n                        \"rate\": 1.0059\n                    }\n                ]\n            }\n        ]\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "New Token",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://localhost:5001/Token?apiKey=testECB",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "5001",
+					"path": [
+						"Token"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "testECB"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "New Token",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:5001/Token?apiKey=testECB",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"Token"
+							],
+							"query": [
+								{
+									"key": "apiKey",
+									"value": "testECB"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "plain",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 24 Jul 2022 21:01:03 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "text/plain; charset=utf-8"
+						},
+						{
+							"key": "Server",
+							"value": "Kestrel"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						}
+					],
+					"cookie": [],
+					"body": "f7b2ff0c-6b74-4225-87be-55d615398189"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"value": "",
+			"type": "default"
+		}
+	]
+}

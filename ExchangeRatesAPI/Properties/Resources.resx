@@ -117,8 +117,14 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="API_DATE_FORMAT" xml:space="preserve">
+    <value>yyyy-MM-dd</value>
+  </data>
   <data name="API_ENDPOINT" xml:space="preserve">
     <value>https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.{0}.{1}.SP00.A?startPeriod={2}&amp;endPeriod={3}&amp;format=jsondata&amp;detail=dataonly</value>
+  </data>
+  <data name="API_STRING_CONCAT" xml:space="preserve">
+    <value>+</value>
   </data>
   <data name="ERROR_API_NO_DATA" xml:space="preserve">
     <value>Looks like the external API does not have exchange rate history for the requested day and past {0} day(s).</value>
