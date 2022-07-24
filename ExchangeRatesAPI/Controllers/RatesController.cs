@@ -57,7 +57,7 @@ namespace ExchangeRatesAPI.Controllers
                     currency.Rates.RemoveAll(rate => !currencyCodes[rate.CurrencyName].Equals(currency.Denominator));
                     if (!currencyCodes.Keys.All(x => currency.Rates.Any(y => y.CurrencyName.Equals(x))))
                     {
-                        result = Result.Incomplete; // We are missing a currency.
+                        result = Result.Incomplete; // We are missing a rate.
                     }
                 }
             }
@@ -129,7 +129,7 @@ namespace ExchangeRatesAPI.Controllers
         private void AddMissingData(ICollection<Exchange> days, DateTime start, DateTime end, Dictionary<string, string> currencyCodes)
         {
             var discDays = days.ToDictionary(x => x.Date);
-            var minDate = days.Select(x => x.Date).Min();
+            var minDate = discDays.Keys.Min();
 
             for (DateTime day = start; day <= end; day = day.AddDays(1))
             {
@@ -304,7 +304,7 @@ namespace ExchangeRatesAPI.Controllers
 
                 var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
 
-                if (dbResult.Equals(Result.Complete))
+                if (dbResult.Result.Equals(Result.Complete))
                 {
                     return Ok(dbResult.Items);
                 }
