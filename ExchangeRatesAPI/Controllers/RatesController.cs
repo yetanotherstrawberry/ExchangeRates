@@ -48,16 +48,24 @@ namespace ExchangeRatesAPI.Controllers
                 .Include(currency => currency.Currencies.Where(currency => currencyCodes.Values.Contains(currency.Denominator)))
                 .ThenInclude(x => x.Rates.Where(rate => currencyCodes.Keys.Contains(rate.CurrencyName))).AsSplitQuery().ToListAsync();
 
+            if ((int)(endDate - startDate + TimeSpan.FromDays(1)).TotalDays != items.Count)
+                result = Result.Incomplete; // We are missing at least one day.
+
             foreach (var exchange in items)
             {
-                if (result.Equals(Result.Incomplete)) break; // We are missing too much data - use external API.
+                if (exchange.Currencies.Count != currencyCodes.Values.Distinct().Count())
+                    result = Result.Incomplete; // We are missing at least one denominator.
+
+                if (result == Result.Incomplete) break; // We are missing data - use external API.
 
                 foreach (var currency in exchange.Currencies)
                 {
-                    currency.Rates.RemoveAll(rate => !currencyCodes[rate.CurrencyName].Equals(currency.Denominator));
-                    if (!currencyCodes.Keys.All(x => currency.Rates.Any(y => y.CurrencyName.Equals(x))))
+                    // Remove rates that were not requested.
+                    currency.Rates.RemoveAll(rate => !currencyCodes[rate.CurrencyName].Contains(currency.Denominator));
+
+                    if (currencyCodes.Where(x => x.Value.Equals(currency.Denominator)).Count() != currency.Rates.Count)
                     {
-                        result = Result.Incomplete; // We are missing a rate.
+                        result = Result.Incomplete; // We are missing at least one rate.
                     }
                 }
             }
@@ -111,16 +119,19 @@ namespace ExchangeRatesAPI.Controllers
             {
                 // Someone else just (concurrently?) added some rate(s). It's okay - just discard it.
                 logger.LogWarning(Properties.Resources.ERROR_ITEM_ALREADY_IN_DB);
-                LogExceptions(ex);
+                LogExceptions(ex, error: false);
             }
         }
 
-        private void LogExceptions(Exception ex)
+        private void LogExceptions(Exception ex, bool error)
         {
             logger.LogInformation(Properties.Resources.ERR_SHOWING_EXC);
             for (Exception exc = ex; exc != null; exc = exc.InnerException)
             {
-                logger.LogWarning(exc.Message);
+                if (error)
+                    logger.LogError(ex.Message);
+                else
+                    logger.LogWarning(exc.Message);
             }
         }
 
@@ -183,7 +194,7 @@ namespace ExchangeRatesAPI.Controllers
                                 Denominator = denominator,
                                 Rates = new List<ExchangeRate>(),
                             });
-                            // In order to copy contents, we want to execute loop on this day once again.
+
                             day = day.Subtract(TimeSpan.FromDays(1));
                             continue;
                         }
@@ -276,6 +287,10 @@ namespace ExchangeRatesAPI.Controllers
             return days;
         }
 
+        /*
+         * currencyCodes:
+         * (PLN, EUR) entry means we want to convert 1 EUR to PLN.
+         */
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<Exchange>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)] // Incorrect key
@@ -303,10 +318,11 @@ namespace ExchangeRatesAPI.Controllers
                 if (startDate >= DateTime.Today || endDate >= DateTime.Today || startDate > endDate) return NotFound();
 
                 var dbResult = await GetRecordsFromDatabase(currencyCodes, startDate, endDate);
+                IEnumerable<Exchange> result;
 
-                if (dbResult.Result.Equals(Result.Complete))
+                if (dbResult.Result == Result.Complete)
                 {
-                    return Ok(dbResult.Items);
+                    result = dbResult.Items;
                 }
                 else
                 {
@@ -319,12 +335,16 @@ namespace ExchangeRatesAPI.Controllers
                     var externalDb = await ExternalGetExchangeRates(pastDay, futureDay, currencyCodes);
                     AddMissingData(externalDb, startDate, endDate, currencyCodes);
                     await AddRecordsToDatabase(externalDb);
-                    return Ok(externalDb.Where(x => x.Date <= endDate && x.Date >= startDate).OrderBy(x => x.Date));
+
+                    result = externalDb.Where(x => x.Date <= endDate && x.Date >= startDate);
                 }
+
+                // OrderBy() can be removed if sorting is not necessary, however it's easier to test the values.
+                return Ok(result.OrderBy(x => x.Date));
             }
             catch (Exception e)
             {
-                logger.LogWarning(e.Message);
+                LogExceptions(e, error: true);
                 return StatusCode(500);
             }
         }
