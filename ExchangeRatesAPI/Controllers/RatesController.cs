@@ -45,8 +45,8 @@ namespace ExchangeRatesAPI.Controllers
         {
             var result = Result.Complete;
 
-            // AsNoTracking() is neccessary, because we've previously loaded collections in this context,
-            // so Where() clause wouldn't work. Also it's faster.
+            // AsNoTracking() is neccessary, if we previously loaded collections in this context,
+            // because Where() clause would not work. Also it makes the query faster.
             var items = await db.Exchanges.AsNoTracking()
                 .Where(exchange => exchange.Date >= startDate && exchange.Date <= endDate)
                 .Include(currency => currency.Currencies.Where(currency => currencyCodes.Values.Contains(currency.Denominator)))
@@ -359,7 +359,11 @@ namespace ExchangeRatesAPI.Controllers
                 }
 
                 var retString = SerializeToJson(ret);
-                cache.Set(cacheKey, retString);
+                cache.Set(cacheKey, retString,
+                     new MemoryCacheEntryOptions
+                     {
+                         SlidingExpiration = TimeSpan.FromDays(7), // If a cached query was not used for 7 days - let it be deleted.
+                     });
                 return ReturnJson(retString);
             }
             catch (Exception e)

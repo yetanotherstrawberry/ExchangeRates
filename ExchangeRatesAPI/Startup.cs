@@ -23,7 +23,7 @@ namespace ExchangeRatesAPI
         public void ConfigureServices(IServiceCollection services)
         {
             var connection = Configuration.GetConnectionString("DefaultConnection");
-            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connection), ServiceLifetime.Singleton, ServiceLifetime.Singleton);
+            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connection), ServiceLifetime.Scoped, ServiceLifetime.Singleton);
 
             services.AddResponseCaching();
 

@@ -11,10 +11,10 @@ namespace ExchangeRatesAPI.Controllers
     [Route("[controller]")]
     public class TokenController : Controller
     {
-        private readonly ILogger<RatesController> _logger;
+        private readonly ILogger<TokenController> _logger;
         private readonly ApplicationDbContext db;
 
-        public TokenController(ILogger<RatesController> logger, ApplicationDbContext context)
+        public TokenController(ILogger<TokenController> logger, ApplicationDbContext context)
         {
             _logger = logger;
             db = context;
